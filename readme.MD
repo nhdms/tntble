@@ -1,4 +1,14 @@
 - yarn add
+```
+    "axios": "^1.6.5",
+    "buffer": "^6.0.3",
+    "react-native-ble-plx": "^3.1.2",
+    "react-native-buffer": "^6.0.3",
+    "react-native-device-info": "^10.12.0",
+    "react-native-logs": "^5.0.1",
+    "react-native-permissions": "^4.0.2",
+    "tntble": "git+ssh://git@github.com:nhdms/tntble.git#master",
+```
 
 ```typescript
 const logger = new Logger([], "info")
