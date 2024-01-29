@@ -58,6 +58,7 @@ export class PLXPeripheral implements BLEPeripheral {
       requestMTU: 185,
     })
 
+    this.listener.onConnect({peripheralId: deviceId})
     this.device = await this.device.discoverAllServicesAndCharacteristics()
     const services = await this.device.services()
     for (const svc of services) {
