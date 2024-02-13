@@ -117,16 +117,20 @@ export class PLXPeripheral implements BLEPeripheral {
   async init() {
   }
 
+  async stopScan() {
+    if (this.manager) {
+      this.manager.stopDeviceScan()
+    }
+    this.listener.onStopScan({status: 1, isTimeout: false})
+  }
+
   async scan(secondToScan: number = 10, name: string = "", address: string = ""): Promise<void> {
     await this.enableBluetooth()
     this.peripheral = new Map<string, Device>()
     this.device = undefined
 
     setTimeout(() => {
-      if (this.manager) {
-        this.manager.stopDeviceScan()
-      }
-      this.listener.onStopScan({status: 1, isTimeout: false})
+      this.stopScan()
     }, secondToScan * 1000)
 
     this.manager.startDeviceScan(null, null, (error, device) => {
@@ -223,7 +227,7 @@ export class PLXPeripheral implements BLEPeripheral {
     this.requestMessages = []
 
     const actions = [
-      new BLEMessage(BLEMessageType.Disconnect),
+      // new BLEMessage(BLEMessageType.Disconnect),
       new BLEMessage(BLEMessageType.WriteDate),
       new BLEMessage(BLEMessageType.VerifyUUID, this.profileInfo?.uuid),
       new BLEMessage(BLEMessageType.RetrieveDeviceInfo),
