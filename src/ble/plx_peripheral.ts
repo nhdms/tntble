@@ -214,15 +214,15 @@ export class PLXPeripheral implements BLEPeripheral {
       throw "device not found"
     }
 
-    if (!profileInfo) {
-      throw "profile not found"
+    if (!profileInfo || !profileInfo.uuid) {
+      throw "profile not found or missing uuid"
     }
 
     this.profileInfo = profileInfo
-    if (!this.profileInfo.ID || !this.profileInfo?.uuid) {
-      const dbProfile = await this.httpClient.post("/profiles", profileInfo)
-      this.profileInfo = dbProfile.data.data
-    }
+    // if (!this.profileInfo.ID || !this.profileInfo?.uuid) {
+    //   const dbProfile = await this.httpClient.post("/profiles", profileInfo)
+    //   this.profileInfo = dbProfile.data.data
+    // }
 
     this.requestMessages = []
 
