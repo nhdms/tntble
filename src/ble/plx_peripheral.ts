@@ -320,6 +320,7 @@ export class PLXPeripheral implements BLEPeripheral {
         user_info: toHexString(user),
         device_info: toHexString(device),
         slot: slot,
+        profile_id: this.profileInfo?.ID
       },
     })
 
