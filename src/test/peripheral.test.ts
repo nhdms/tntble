@@ -24,8 +24,13 @@ test('adds 1 + 2 to equal 3', () => {
     onDisconnect(): void {
       logger.info("device disconnected")
     },
+    onWaitConfirm(): void {
+      logger.info("show popup confirm slot has data here")
+      // continue to scale after confirm
+      manager.startScale(1)
+    },
     async onDiscover(peripheral: Device): Promise<void> {
-      // await manager.stopScan()
+      await manager.stopScan()
       logger.debug(`found ${peripheral.id} ${peripheral.name} ${JSON.stringify(peripheral)}`)
 
       const profileInfo = {

@@ -209,7 +209,7 @@ export class PLXPeripheral implements BLEPeripheral {
     }
   }
 
-  async connectAndScale(device: Device, profileInfo: TNTUserInfo, slot = 0, bond = false) {
+  async connectAndScale(device: Device, profileInfo: TNTUserInfo, slot = 0, bond = false, forceOverWriteProfile = false) {
     if (!device || !device.id) {
       throw "device not found"
     }
@@ -271,7 +271,7 @@ export class PLXPeripheral implements BLEPeripheral {
           await this.requestNextAction(BLEMessageType.RetrieveUserInfo)
           return
         case BLEMessageType.RetrieveUserInfo:
-          await this.exchangeUserInfo(slot)
+          await this.exchangeUserInfo(slot, forceOverWriteProfile)
           return
         case BLEMessageType.ExchangeUserInfo:
           if (!bond) {
@@ -311,7 +311,7 @@ export class PLXPeripheral implements BLEPeripheral {
     await this.requestNextAction(BLEMessageType.WriteDate)
   }
 
-  private async exchangeUserInfo(slot: number) {
+  private async exchangeUserInfo(slot: number, forceOverWriteProfile: boolean) {
     const device = this.receivedMessages.get(BLEMessageType.RetrieveDeviceInfo)
     const user = this.receivedMessages.get(BLEMessageType.RetrieveUserInfo)
 
@@ -319,11 +319,32 @@ export class PLXPeripheral implements BLEPeripheral {
       data: {
         user_info: toHexString(user),
         device_info: toHexString(device),
+        slot: slot,
       },
     })
 
     this.deviceInfo = deviceResponseDecoded.data.data
 
+    if (!forceOverWriteProfile && this.deviceInfo && this.deviceInfo.user_info_exists) {
+      this.listener.onWaitConfirm()
+      return
+    }
+    await this.startScale(slot)
+  }
+
+  private async requestNextAction(type: BLEMessageType) {
+    const action = this.requestMessages.find(a => a.id === type)
+    if (action) {
+      await this.write(action)
+      return
+    }
+
+    const actionName = getKeyByValue(BLEMessageType, type)
+    this.logger.warn(`not found next action ${actionName}`)
+    throw `action ${actionName} not found`
+  }
+
+  async startScale(slot: number) {
     const exchangePayload = {
       user_info: this.profileInfo,
       device_info: this.deviceInfo,
@@ -346,17 +367,5 @@ export class PLXPeripheral implements BLEPeripheral {
     const measureMessages = await this.httpClient.post("/messages", reqBody)
     this.requestMessages.push(...measureMessages.data.data.actions)
     await this.requestNextAction(BLEMessageType.ExchangeUserInfo)
-  }
-
-  private async requestNextAction(type: BLEMessageType) {
-    const action = this.requestMessages.find(a => a.id === type)
-    if (action) {
-      await this.write(action)
-      return
-    }
-
-    const actionName = getKeyByValue(BLEMessageType, type)
-    this.logger.warn(`not found next action ${actionName}`)
-    throw `action ${actionName} not found`
   }
 }

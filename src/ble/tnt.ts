@@ -22,4 +22,5 @@ export type TNTUserInfo = {
 
 export type TNTDeviceInfo = {
   ID: number,
+  user_info_exists: boolean
 }

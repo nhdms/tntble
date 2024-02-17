@@ -17,15 +17,19 @@ export type BLECallback = (data: BLEData) => void
 export interface BLEPeripheral {
   init(): Promise<void>
 
+  stopScan(): Promise<void>
+
   scan(secondToScan: number, name: string, address: string): Promise<void>
 
   connect(device: string, onData: BLECallback | undefined): Promise<void>
 
   write(request: BLERequest): Promise<void>
 
-  connectAndScale(device: Device, profile: TNTUserInfo, slot: number, bond: boolean): Promise<void>
+  connectAndScale(device: Device, profile: TNTUserInfo, slot: number, bond: boolean, forceOverwriteProfile: boolean): Promise<void>
 
   onClose(): Promise<void>
+
+  startScale(slot: number): Promise<void>
 }
 
 export type BLEData = {
@@ -53,4 +57,6 @@ export interface BLEListener {
   onStartScale(data: BLEData): void
 
   onScaleDone(data: any): void
+
+  onWaitConfirm(): void;
 }
