@@ -1,4 +1,4 @@
-import { BleError, Device, Device as Peripheral, State } from "react-native-ble-plx"
+import {BleError, Device, Device as Peripheral, State} from "react-native-ble-plx"
 import {TNTUserInfo} from "./tnt";
 
 export type BLERequest = {
@@ -40,7 +40,7 @@ export type BLEData = {
 }
 
 export interface BLEListener {
-  onStopScan({ status, isTimeout }: { status: number, isTimeout: boolean }): void
+  onStopScan({status, isTimeout}: { status: number, isTimeout: boolean }): void
 
   onStateUpdate(newState: State): void
 
@@ -48,7 +48,7 @@ export interface BLEListener {
 
   onData(err: BleError | null, data: BLEData | null): void
 
-  onConnect({ peripheralId }: { peripheralId: string }): void
+  onConnect({peripheralId}: { peripheralId: string }): void
 
   onDisconnect(): void
 
@@ -59,4 +59,6 @@ export interface BLEListener {
   onScaleDone(data: any): void
 
   onWaitConfirm(): void;
+
+  onError(location: string, e: any): void;
 }

@@ -45,72 +45,77 @@ export class PLXPeripheral implements BLEPeripheral {
   }
 
   async connect(deviceId: string, onData: BLECallback | undefined) {
-    let device = this.peripheral.get(deviceId)
-    if (!device) {
-      throw `device ${deviceId} not found`
-    }
+    try {
+      let device = this.peripheral.get(deviceId)
+      if (!device) {
+        throw `device ${deviceId} not found`
+      }
 
-    this.messageQueue = {}
-    this.receivedMessages = new Map<BLEMessageType, number[]>()
+      this.messageQueue = {}
+      this.receivedMessages = new Map<BLEMessageType, number[]>()
 
-    this.device = device
-    this.device = await this.device.connect({
-      requestMTU: 185,
-    })
+      this.device = device
+      this.device = await this.device.connect({
+        requestMTU: 185,
+      })
 
-    this.listener.onConnect({peripheralId: deviceId})
-    this.device = await this.device.discoverAllServicesAndCharacteristics()
-    const services = await this.device.services()
-    for (const svc of services) {
-      const characteristics = await svc.characteristics()
-      for (const ch of characteristics) {
-        if (ch.isNotifiable || ch.isIndicatable) {
-          ch.monitor((err, callbackCh) => {
-            if (err) {
-              this.logger.debug(`${ch.uuid} characteristics error ${err}`)
-              this.listener.onData(err, null)
-              return
-            }
-            const val = callbackCh?.value
-            if (!val) {
-              return
-            }
+      this.listener.onConnect({peripheralId: deviceId})
+      this.device = await this.device.discoverAllServicesAndCharacteristics()
+      const services = await this.device.services()
+      for (const svc of services) {
+        const characteristics = await svc.characteristics()
+        for (const ch of characteristics) {
+          if (ch.isNotifiable || ch.isIndicatable) {
+            ch.monitor((err, callbackCh) => {
+              if (err) {
+                this.logger.debug(`${ch.uuid} characteristics error ${err}`)
+                this.listener.onData(err, null)
+                return
+              }
+              const val = callbackCh?.value
+              if (!val) {
+                return
+              }
 
-            this.logger.debug(`[${ch.uuid} | ${ch.isNotifying} | ${this.currentWriteRequest?.name}] receive message ${base64ToHexString(val)}`)
+              this.logger.debug(`[${ch.uuid} | ${ch.isNotifying} | ${this.currentWriteRequest?.name}] receive message ${base64ToHexString(val)}`)
 
-            const value = Buffer.from(val, "base64")
-            const totalMsg = ((value[1] & 15) << 8) + (value[2] & 255)
-            const currentMsg = ((value[0] & 255) << 4) + ((value[1] & 240) >> 4)
-            const isLastMessage = totalMsg - currentMsg === 0
+              const value = Buffer.from(val, "base64")
+              const totalMsg = ((value[1] & 15) << 8) + (value[2] & 255)
+              const currentMsg = ((value[0] & 255) << 4) + ((value[1] & 240) >> 4)
+              const isLastMessage = totalMsg - currentMsg === 0
 
-            if (!this.messageQueue[ch.uuid]) {
+              if (!this.messageQueue[ch.uuid]) {
+                this.messageQueue[ch.uuid] = []
+              }
+
+              if (!isLastMessage) {
+                // @ts-ignore
+                this.messageQueue[ch.uuid].push(...value)
+                return
+              }
+              const payload = this.messageQueue[ch.uuid]
               this.messageQueue[ch.uuid] = []
-            }
-
-            if (!isLastMessage) {
               // @ts-ignore
-              this.messageQueue[ch.uuid].push(...value)
-              return
-            }
-            const payload = this.messageQueue[ch.uuid]
-            this.messageQueue[ch.uuid] = []
-            // @ts-ignore
-            payload.push(...value)
+              payload.push(...value)
 
-            const callbackPayload = {
-              value: payload,
-              characteristic: ch.uuid,
-              service: ch.serviceUUID,
-              writeRequest: this.currentWriteRequest,
-            }
-            if (onData) {
-              onData(callbackPayload)
-            }
+              const callbackPayload = {
+                value: payload,
+                characteristic: ch.uuid,
+                service: ch.serviceUUID,
+                writeRequest: this.currentWriteRequest,
+              }
+              if (onData) {
+                onData(callbackPayload)
+              }
 
-            this.listener.onData(null, callbackPayload)
-          })
+              this.listener.onData(null, callbackPayload)
+            })
+          }
         }
       }
+    } catch (e) {
+      this.listener.onError('connect', e)
+      this.logger.debug(`Error on connect ${e}`)
     }
   }
 
@@ -118,38 +123,46 @@ export class PLXPeripheral implements BLEPeripheral {
   }
 
   async stopScan() {
-    if (this.manager) {
-      this.manager.stopDeviceScan()
+    try {
+      if (this.manager) {
+        this.manager.stopDeviceScan()
+      }
+      this.listener.onStopScan({status: 1, isTimeout: false})
+    } catch (e) {
+      this.listener.onError('stopScan', e)
     }
-    this.listener.onStopScan({status: 1, isTimeout: false})
   }
 
   async scan(secondToScan: number = 10, name: string = "", address: string = ""): Promise<void> {
-    await this.enableBluetooth()
-    this.peripheral = new Map<string, Device>()
-    this.device = undefined
+    try {
+      await this.enableBluetooth()
+      this.peripheral = new Map<string, Device>()
+      this.device = undefined
 
-    setTimeout(() => {
-      this.stopScan()
-    }, secondToScan * 1000)
+      setTimeout(() => {
+        this.stopScan()
+      }, secondToScan * 1000)
 
-    this.manager.startDeviceScan(null, null, (error, device) => {
-      if (error) {
-        throw error
-      }
+      this.manager.startDeviceScan(null, null, (error, device) => {
+        if (error) {
+          throw error
+        }
 
-      if (!device) {
-        return
-      }
+        if (!device) {
+          return
+        }
 
-      if (!this.isNameOrAddressMatch(device, name, address)) {
-        return
-      }
+        if (!this.isNameOrAddressMatch(device, name, address)) {
+          return
+        }
 
-      this.peripheral.set(device.id, device)
-      this.listener.onDiscover(device)
-    })
-    return Promise.resolve()
+        this.peripheral.set(device.id, device)
+        this.listener.onDiscover(device)
+      })
+      return Promise.resolve()
+    } catch (e) {
+      this.listener.onError('scan', e)
+    }
   }
 
   private isNameOrAddressMatch(device: Device, name: string, address: string) {
@@ -172,21 +185,25 @@ export class PLXPeripheral implements BLEPeripheral {
   }
 
   async write(request: BLERequest) {
-    if (!this.device) {
-      throw "device not found"
-    }
-    this.currentWriteRequest = request
-    if (request.delayInMilis && request.delayInMilis > 0) {
-      await sleep(request.delayInMilis)
-    }
-
-    for (const p of request.payload) {
-      this.logger.debug(`start write ${p} | b64: ${hexStringToBase64(p)}`)
-      if (request.withResponse) {
-        await this.device.writeCharacteristicWithResponseForService(request.service_id, request.characteristic_id, hexStringToBase64(p))
-        continue
+    try {
+      if (!this.device) {
+        throw "device not found"
       }
-      await this.device.writeCharacteristicWithoutResponseForService(request.service_id, request.characteristic_id, hexStringToBase64(p))
+      this.currentWriteRequest = request
+      if (request.delayInMilis && request.delayInMilis > 0) {
+        await sleep(request.delayInMilis)
+      }
+
+      for (const p of request.payload) {
+        this.logger.debug(`start write ${p} | b64: ${hexStringToBase64(p)}`)
+        if (request.withResponse) {
+          await this.device.writeCharacteristicWithResponseForService(request.service_id, request.characteristic_id, hexStringToBase64(p))
+          continue
+        }
+        await this.device.writeCharacteristicWithoutResponseForService(request.service_id, request.characteristic_id, hexStringToBase64(p))
+      }
+    } catch (e) {
+      this.listener.onError('write', e)
     }
   }
 
@@ -195,8 +212,12 @@ export class PLXPeripheral implements BLEPeripheral {
   }
 
   async onClose() {
-    if (this.manager) {
-      this.manager.destroy()
+    try {
+      if (this.manager) {
+        this.manager.destroy()
+      }
+    } catch (e) {
+      this.listener.onError('close', e)
     }
   }
 
@@ -346,27 +367,31 @@ export class PLXPeripheral implements BLEPeripheral {
   }
 
   async startScale(slot: number) {
-    const exchangePayload = {
-      user_info: this.profileInfo,
-      device_info: this.deviceInfo,
-      profile_id: slot,
+    try {
+      const exchangePayload = {
+        user_info: this.profileInfo,
+        device_info: this.deviceInfo,
+        profile_id: slot,
+      }
+
+      const measures = [
+        new BLEMessage(BLEMessageType.ExchangeUserInfo, exchangePayload),
+        new BLEMessage(BLEMessageType.SaveUUID, this.profileInfo?.uuid),
+        new BLEMessage(BLEMessageType.Measure),
+        new BLEMessage(BLEMessageType.RetrieveMeasurementCount),
+        new BLEMessage(BLEMessageType.RetrieveMeasurementInfo, "1"),
+      ]
+
+      const reqBody = {
+        "actions": measures.map(a => a.getAction()),
+        "device": this.deviceInfo,
+      }
+
+      const measureMessages = await this.httpClient.post("/messages", reqBody)
+      this.requestMessages.push(...measureMessages.data.data.actions)
+      await this.requestNextAction(BLEMessageType.ExchangeUserInfo)
+    } catch (e) {
+      this.listener.onError('scale', e)
     }
-
-    const measures = [
-      new BLEMessage(BLEMessageType.ExchangeUserInfo, exchangePayload),
-      new BLEMessage(BLEMessageType.SaveUUID, this.profileInfo?.uuid),
-      new BLEMessage(BLEMessageType.Measure),
-      new BLEMessage(BLEMessageType.RetrieveMeasurementCount),
-      new BLEMessage(BLEMessageType.RetrieveMeasurementInfo, "1"),
-    ]
-
-    const reqBody = {
-      "actions": measures.map(a => a.getAction()),
-      "device": this.deviceInfo,
-    }
-
-    const measureMessages = await this.httpClient.post("/messages", reqBody)
-    this.requestMessages.push(...measureMessages.data.data.actions)
-    await this.requestNextAction(BLEMessageType.ExchangeUserInfo)
   }
 }

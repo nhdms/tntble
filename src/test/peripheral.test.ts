@@ -8,6 +8,8 @@ test('adds 1 + 2 to equal 3', () => {
   const logger = new Logger([], "info")
   let manager: PLXPeripheral
   let listener: BLEListener = {
+    onError(location: string, e: any) {
+    },
     onScaleDone(data: any): void {
       logger.info(`scale done with data ${JSON.stringify(data, null, 2)}`)
     },
