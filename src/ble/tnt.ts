@@ -17,7 +17,8 @@ export type TNTUserInfo = {
   calendar: string,
   gender: number,
   tare: string,
-  uuid?: string
+  uuid?: string,
+  slot?: number
 }
 
 export type TNTDeviceInfo = {

@@ -44,6 +44,10 @@ export class PLXPeripheral implements BLEPeripheral {
     })
   }
 
+  getProfile() {
+    return this.profileInfo
+  }
+
   async connect(deviceId: string, onData: BLECallback | undefined) {
     try {
       let device = this.peripheral.get(deviceId)
@@ -239,12 +243,7 @@ export class PLXPeripheral implements BLEPeripheral {
       throw "profile not found or missing uuid"
     }
 
-    this.profileInfo = profileInfo
-    // if (!this.profileInfo.ID || !this.profileInfo?.uuid) {
-    //   const dbProfile = await this.httpClient.post("/profiles", profileInfo)
-    //   this.profileInfo = dbProfile.data.data
-    // }
-
+    this.profileInfo = {...profileInfo, slot: slot}
     this.requestMessages = []
 
     const actions = [
@@ -304,7 +303,7 @@ export class PLXPeripheral implements BLEPeripheral {
         case BLEMessageType.SaveUUID:
           await this.requestNextAction(BLEMessageType.Measure)
           await sleep(1000)
-          this.listener.onStartScale(data)
+          this.listener.onStartScale(data, this.profileInfo)
           return
         case BLEMessageType.Measure:
           await this.requestNextAction(BLEMessageType.RetrieveMeasurementCount)

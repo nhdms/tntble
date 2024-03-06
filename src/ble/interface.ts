@@ -30,6 +30,8 @@ export interface BLEPeripheral {
   onClose(): Promise<void>
 
   startScale(slot: number): Promise<void>
+
+  getProfile(): TNTUserInfo
 }
 
 export type BLEData = {
@@ -54,7 +56,7 @@ export interface BLEListener {
 
   onClose(): void
 
-  onStartScale(data: BLEData): void
+  onStartScale(data: BLEData, uuid: TNTUserInfo): void
 
   onScaleDone(data: any): void
 
