@@ -291,6 +291,9 @@ export class PLXPeripheral implements BLEPeripheral {
           await this.requestNextAction(BLEMessageType.RetrieveUserInfo)
           return
         case BLEMessageType.RetrieveUserInfo:
+          if (bond) {
+            forceOverWriteProfile = false
+          }
           await this.exchangeUserInfo(slot, forceOverWriteProfile)
           return
         case BLEMessageType.ExchangeUserInfo:
