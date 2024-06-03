@@ -302,6 +302,8 @@ export class PLXPeripheral implements BLEPeripheral {
             return
           }
           await this.requestNextAction(BLEMessageType.Measure)
+          await sleep(1000)
+          this.listener.onStartScale(data, this.profileInfo)
           return
         case BLEMessageType.SaveUUID:
           await this.requestNextAction(BLEMessageType.Measure)
