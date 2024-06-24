@@ -52,7 +52,7 @@ export interface BLEListener {
 
   onConnect({peripheralId}: { peripheralId: string }): void
 
-  onDisconnect(): void
+  onDisconnect(error: BleError | null): void
 
   onClose(): void
 

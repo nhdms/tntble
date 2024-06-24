@@ -64,8 +64,6 @@ export class PLXPeripheral implements BLEPeripheral {
       })
 
       this.listener.onConnect({peripheralId: deviceId})
-      this.device.onDisconnected(this.listener.onDisconnect)
-
       this.device = await this.device.discoverAllServicesAndCharacteristics()
       const services = await this.device.services()
       for (const svc of services) {
@@ -374,6 +372,11 @@ export class PLXPeripheral implements BLEPeripheral {
   }
 
   async startScale(slot: number) {
+    // start register disconnect event
+    this.device.onDisconnected((e) => {
+      this.listener.onDisconnect(e)
+    })
+
     try {
       const exchangePayload = {
         user_info: this.profileInfo,
