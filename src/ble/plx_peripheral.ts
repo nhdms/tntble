@@ -73,7 +73,8 @@ export class PLXPeripheral implements BLEPeripheral {
             ch.monitor((err, callbackCh) => {
               if (err) {
                 this.logger.debug(`${ch.uuid} characteristics error ${err}`)
-                this.listener.onData(err, null)
+                // this.listener.onData(err, null)
+                this.listener.onError('onData', err)
                 return
               }
               const val = callbackCh?.value
