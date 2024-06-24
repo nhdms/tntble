@@ -64,6 +64,8 @@ export class PLXPeripheral implements BLEPeripheral {
       })
 
       this.listener.onConnect({peripheralId: deviceId})
+      this.device.onDisconnected(this.listener.onDisconnect)
+
       this.device = await this.device.discoverAllServicesAndCharacteristics()
       const services = await this.device.services()
       for (const svc of services) {
