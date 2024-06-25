@@ -12,6 +12,16 @@ export type BLERequest = {
   uuid: string
 }
 
+export enum ManagerState {
+  Initialized = 5,
+  Scanning = 10,
+  Connecting = 15,
+  Connected = 20,
+  StartScale = 25,
+  ScaleDone = 30,
+  Disconnect = 100, // do not handle disconnect
+}
+
 export type BLECallback = (data: BLEData) => void
 
 export interface BLEPeripheral {
@@ -32,6 +42,8 @@ export interface BLEPeripheral {
   startScale(slot: number): Promise<void>
 
   getProfile(): TNTUserInfo
+
+  getState(): ManagerState
 }
 
 export type BLEData = {
