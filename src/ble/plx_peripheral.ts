@@ -1,5 +1,5 @@
 import {BLECallback, BLEListener, BLEPeripheral, BLERequest} from "./interface"
-import {BleManager, Device, State} from "react-native-ble-plx"
+import {BleErrorCode, BleManager, Device, State} from "react-native-ble-plx"
 import {base64ToHexString, hexStringToBase64} from "./node_buffer"
 import {Buffer} from "buffer"
 import {
@@ -66,6 +66,7 @@ export class PLXPeripheral implements BLEPeripheral {
       this.listener.onConnect({peripheralId: deviceId})
       this.device = await this.device.discoverAllServicesAndCharacteristics()
       const services = await this.device.services()
+      const errorFired = {}
       for (const svc of services) {
         const characteristics = await svc.characteristics()
         for (const ch of characteristics) {
@@ -73,7 +74,15 @@ export class PLXPeripheral implements BLEPeripheral {
             ch.monitor((err, callbackCh) => {
               if (err) {
                 this.logger.debug(`${ch.uuid} characteristics error ${err}`)
-                // this.listener.onData(err, null)
+                if (err.errorCode === BleErrorCode.DeviceDisconnected) {
+                  // deduplicate event disconnected
+                  const key = JSON.stringify(err)
+                  if (errorFired[key]) {
+                    return
+                  }
+                  errorFired[key] = true
+                }
+
                 this.listener.onError('onData', err)
                 return
               }
@@ -372,11 +381,6 @@ export class PLXPeripheral implements BLEPeripheral {
   }
 
   async startScale(slot: number) {
-    // start register disconnect event
-    this.device.onDisconnected((e) => {
-      this.listener.onDisconnect(e)
-    })
-
     try {
       const exchangePayload = {
         user_info: this.profileInfo,
