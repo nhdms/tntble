@@ -1,4 +1,4 @@
-import {BLECallback, BLEListener, BLEPeripheral, BLERequest} from "./interface"
+import {BLECallback, BLEData, BLEListener, BLEPeripheral, BLERequest} from "./interface"
 import {BleErrorCode, BleManager, Device, State} from "react-native-ble-plx"
 import {base64ToHexString, hexStringToBase64} from "./node_buffer"
 import {Buffer} from "buffer"
@@ -16,6 +16,16 @@ import {AxiosInstance} from "axios"
 import {TNTDeviceInfo, TNTUserInfo} from "./tnt"
 import {Logger} from "./logger";
 
+export enum ManagerState {
+  Initialized = 5,
+  Scanning = 10,
+  Connecting = 15,
+  Connected = 20,
+  StartScale = 25,
+  ScaleDone = 30,
+  Disconnect = 100, // do not handle disconnect
+}
+
 export class PLXPeripheral implements BLEPeripheral {
   private readonly manager: BleManager
   private peripheral: Map<string, Device> = new Map<string, Device>()
@@ -32,6 +42,7 @@ export class PLXPeripheral implements BLEPeripheral {
   private requestMessages: BLERequest[] = []
   private receivedMessages = new Map<BLEMessageType, number[]>()
   private messageQueue: Record<string, number[]> = {}
+  private state = ManagerState.Initialized;
 
   constructor(listener: BLEListener, l: Logger, httpClient: AxiosInstance) {
     this.manager = new BleManager()
@@ -42,6 +53,7 @@ export class PLXPeripheral implements BLEPeripheral {
       this.logger.debug("init done")
       this.manager.onStateChange(this.listener.onStateUpdate)
     })
+    this.state = ManagerState.Initialized
   }
 
   getProfile() {
@@ -50,6 +62,7 @@ export class PLXPeripheral implements BLEPeripheral {
 
   async connect(deviceId: string, onData: BLECallback | undefined) {
     try {
+      this.state = ManagerState.Connecting
       let device = this.peripheral.get(deviceId)
       if (!device) {
         throw `device ${deviceId} not found`
@@ -62,7 +75,7 @@ export class PLXPeripheral implements BLEPeripheral {
       this.device = await this.device.connect({
         requestMTU: 185,
       })
-
+      this.state = ManagerState.Connected
       this.listener.onConnect({peripheralId: deviceId})
       this.device = await this.device.discoverAllServicesAndCharacteristics()
       const services = await this.device.services()
@@ -156,7 +169,7 @@ export class PLXPeripheral implements BLEPeripheral {
       setTimeout(() => {
         this.stopScan()
       }, secondToScan * 1000)
-
+      this.state = ManagerState.Scanning
       this.manager.startDeviceScan(null, null, (error, device) => {
         if (error) {
           throw error
@@ -313,12 +326,12 @@ export class PLXPeripheral implements BLEPeripheral {
           }
           await this.requestNextAction(BLEMessageType.Measure)
           await sleep(1000)
-          this.listener.onStartScale(data, this.profileInfo)
+          this.onStartScale(data, this.profileInfo)
           return
         case BLEMessageType.SaveUUID:
           await this.requestNextAction(BLEMessageType.Measure)
           await sleep(1000)
-          this.listener.onStartScale(data, this.profileInfo)
+          this.onStartScale(data, this.profileInfo)
           return
         case BLEMessageType.Measure:
           await this.requestNextAction(BLEMessageType.RetrieveMeasurementCount)
@@ -334,6 +347,7 @@ export class PLXPeripheral implements BLEPeripheral {
           })
 
           this.listener.onScaleDone(metrics.data.data)
+          this.state = ManagerState.ScaleDone
           // await this.requestNextAction(BLEMessageType.Disconnect)
           return
       }
@@ -407,5 +421,10 @@ export class PLXPeripheral implements BLEPeripheral {
     } catch (e) {
       this.listener.onError('scale', e)
     }
+  }
+
+  private onStartScale(data: BLEData, profileInfo: TNTUserInfo) {
+    this.listener.onStartScale(data, profileInfo)
+    this.state = ManagerState.StartScale
   }
 }
