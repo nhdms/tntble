@@ -1,4 +1,4 @@
-import {BLECallback, BLEData, BLEListener, BLEPeripheral, BLERequest} from "./interface"
+import {BLECallback, BLEData, BLEListener, BLEPeripheral, BLERequest, ManagerState} from "./interface"
 import {BleErrorCode, BleManager, Device, State} from "react-native-ble-plx"
 import {base64ToHexString, hexStringToBase64} from "./node_buffer"
 import {Buffer} from "buffer"
@@ -15,16 +15,6 @@ import {
 import {AxiosInstance} from "axios"
 import {TNTDeviceInfo, TNTUserInfo} from "./tnt"
 import {Logger} from "./logger";
-
-export enum ManagerState {
-  Initialized = 5,
-  Scanning = 10,
-  Connecting = 15,
-  Connected = 20,
-  StartScale = 25,
-  ScaleDone = 30,
-  Disconnect = 100, // do not handle disconnect
-}
 
 export class PLXPeripheral implements BLEPeripheral {
   private readonly manager: BleManager
@@ -58,6 +48,10 @@ export class PLXPeripheral implements BLEPeripheral {
 
   getProfile() {
     return this.profileInfo
+  }
+
+  getState(): ManagerState {
+    return this.state
   }
 
   async connect(deviceId: string, onData: BLECallback | undefined) {
