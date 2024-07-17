@@ -251,7 +251,14 @@ export class PLXPeripheral implements BLEPeripheral {
     }
   }
 
-  async connectAndScale(device: Device, profileInfo: TNTUserInfo, slot = 0, bond = false, forceOverWriteProfile = false) {
+  async connectAndScale(
+    device: Device,
+    profileInfo: TNTUserInfo,
+    slot = 0,
+    bond = false,
+    forceOverWriteProfile = false,
+    offlineScale = false,
+  ) {
     if (!device || !device.id) {
       throw "device not found"
     }
@@ -338,6 +345,7 @@ export class PLXPeripheral implements BLEPeripheral {
             "payload": toHexString(data.value),
             "device_id": this.deviceInfo?.ID,
             "profile_id": this.profileInfo?.ID,
+            "offline_scale": offlineScale,
           })
 
           this.listener.onScaleDone(metrics.data.data)

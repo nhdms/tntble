@@ -35,7 +35,7 @@ export interface BLEPeripheral {
 
   write(request: BLERequest): Promise<void>
 
-  connectAndScale(device: Device, profile: TNTUserInfo, slot: number, bond: boolean, forceOverwriteProfile: boolean): Promise<void>
+  connectAndScale(device: Device, profile: TNTUserInfo, slot: number, bond: boolean, forceOverwriteProfile: boolean, offlineScale: boolean): Promise<void>
 
   onClose(): Promise<void>
 
