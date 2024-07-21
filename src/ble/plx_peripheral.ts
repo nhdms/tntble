@@ -1,5 +1,5 @@
 import {BLECallback, BLEData, BLEListener, BLEPeripheral, BLERequest, ManagerState} from "./interface"
-import {BleErrorCode, BleManager, Device, State} from "react-native-ble-plx"
+import {BleErrorCode, BleManager, Device, ScanMode, State} from "react-native-ble-plx"
 import {base64ToHexString, hexStringToBase64} from "./node_buffer"
 import {Buffer} from "buffer"
 import {
@@ -15,7 +15,6 @@ import {
 import {AxiosInstance} from "axios"
 import {TNTDeviceInfo, TNTUserInfo} from "./tnt"
 import {Logger} from "./logger";
-import {Platform} from "react-native";
 
 export class PLXPeripheral implements BLEPeripheral {
   private readonly manager: BleManager
@@ -166,7 +165,9 @@ export class PLXPeripheral implements BLEPeripheral {
         this.stopScan()
       }, secondToScan * 1000)
       this.state = ManagerState.Scanning
-      this.manager.startDeviceScan(null, null, (error, device) => {
+      this.manager.startDeviceScan(null, {
+        scanMode: ScanMode.LowLatency,
+      }, (error, device) => {
         if (error) {
           throw error
         }
