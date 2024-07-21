@@ -15,6 +15,7 @@ import {
 import {AxiosInstance} from "axios"
 import {TNTDeviceInfo, TNTUserInfo} from "./tnt"
 import {Logger} from "./logger";
+import {Platform} from "react-native";
 
 export class PLXPeripheral implements BLEPeripheral {
   private readonly manager: BleManager
@@ -68,6 +69,7 @@ export class PLXPeripheral implements BLEPeripheral {
       this.device = device
       this.device = await this.device.connect({
         requestMTU: 185,
+        refreshGatt: "OnConnected",
       })
       this.state = ManagerState.Connected
       this.listener.onConnect({peripheralId: deviceId})
