@@ -341,6 +341,22 @@ export class PLXPeripheral implements BLEPeripheral {
           await this.requestNextAction(BLEMessageType.RetrieveMeasurementCount)
           return
         case BLEMessageType.RetrieveMeasurementCount:
+          const count = data.value.length > 9 ? data.value[9] : 0
+          if (count > 0) {
+            const measures = [
+              new BLEMessage(BLEMessageType.RetrieveMeasurementInfo, count + ""),
+            ]
+
+            const reqBody = {
+              "actions": measures.map(a => a.getAction()),
+              "device": this.deviceInfo,
+            }
+
+            const measureMessages = await this.httpClient.post("/messages", reqBody)
+            this.requestMessages = this.requestMessages.filter(a => a.id !== BLEMessageType.RetrieveMeasurementInfo)
+            this.requestMessages.push(...measureMessages.data.data.actions)
+          }
+
           await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo)
           return
         case BLEMessageType.RetrieveMeasurementInfo:
