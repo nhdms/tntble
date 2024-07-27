@@ -33,7 +33,7 @@ export class PLXPeripheral implements BLEPeripheral {
   private receivedMessages = new Map<BLEMessageType, number[]>()
   private messageQueue: Record<string, number[]> = {}
   private state = ManagerState.Initialized;
-
+  private hasOldData = false
   constructor(listener: BLEListener, l: Logger, httpClient: AxiosInstance) {
     this.manager = new BleManager()
     this.listener = listener
@@ -342,9 +342,10 @@ export class PLXPeripheral implements BLEPeripheral {
           return
         case BLEMessageType.RetrieveMeasurementCount:
           const count = data.value.length > 9 ? data.value[9] : 0
-          if (count > 0) {
+          if (count > 0 && count != 1) {
+            this.hasOldData = true
             const measures = [
-              new BLEMessage(BLEMessageType.RetrieveMeasurementInfo, count + ""),
+              new BLEMessage(BLEMessageType.RetrieveMeasurementInfo, count),
             ]
 
             const reqBody = {
@@ -353,13 +354,20 @@ export class PLXPeripheral implements BLEPeripheral {
             }
 
             const measureMessages = await this.httpClient.post("/messages", reqBody)
-            this.requestMessages = this.requestMessages.filter(a => a.id !== BLEMessageType.RetrieveMeasurementInfo)
             this.requestMessages.push(...measureMessages.data.data.actions)
+            await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, true)
           }
 
           await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo)
           return
         case BLEMessageType.RetrieveMeasurementInfo:
+          // skip first message
+          if (this.hasOldData) {
+            this.hasOldData = false
+            await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo)
+            return
+          }
+
           const metrics = await this.httpClient.post("/measures", {
             "payload": toHexString(data.value),
             "device_id": this.deviceInfo?.ID,
@@ -403,8 +411,12 @@ export class PLXPeripheral implements BLEPeripheral {
     await this.startScale(slot)
   }
 
-  private async requestNextAction(type: BLEMessageType) {
-    const action = this.requestMessages.find(a => a.id === type)
+  private async requestNextAction(type: BLEMessageType, isLast = false) {
+    let action = this.requestMessages.find(a => a.id === type)
+    if (isLast) {
+      action = this.requestMessages.reverse().find(a => a.id === type)
+    }
+
     if (action) {
       await this.write(action)
       return
