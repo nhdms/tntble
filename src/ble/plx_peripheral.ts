@@ -33,7 +33,6 @@ export class PLXPeripheral implements BLEPeripheral {
   private receivedMessages = new Map<BLEMessageType, number[]>()
   private messageQueue: Record<string, number[]> = {}
   private state = ManagerState.Initialized;
-  private oldDataRemaining = 0
   constructor(listener: BLEListener, l: Logger, httpClient: AxiosInstance) {
     this.manager = new BleManager()
     this.listener = listener
@@ -356,18 +355,16 @@ export class PLXPeripheral implements BLEPeripheral {
             const measureMessages = await this.httpClient.post("/messages", reqBody)
             this.requestMessages.unshift(...measureMessages.data.data.actions)
             await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, true)
-            this.oldDataRemaining = count
             return
           }
 
-          await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo)
+          await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, true)
           return
         case BLEMessageType.RetrieveMeasurementInfo:
           // skip first message
-          if (this.oldDataRemaining > 0) { // 10
-            this.oldDataRemaining--
-            const needRemove = this.oldDataRemaining > 0
-            await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, needRemove)
+          const messageRequestExists = this.requestMessages.find(a => a.id === BLEMessageType.RetrieveMeasurementInfo)
+          if (messageRequestExists) {
+            await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, true)
             return
           }
 
