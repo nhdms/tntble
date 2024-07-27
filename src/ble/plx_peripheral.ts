@@ -33,7 +33,7 @@ export class PLXPeripheral implements BLEPeripheral {
   private receivedMessages = new Map<BLEMessageType, number[]>()
   private messageQueue: Record<string, number[]> = {}
   private state = ManagerState.Initialized;
-  private oldDataRemaining = 1
+  private oldDataRemaining = 0
   constructor(listener: BLEListener, l: Logger, httpClient: AxiosInstance) {
     this.manager = new BleManager()
     this.listener = listener
@@ -342,10 +342,9 @@ export class PLXPeripheral implements BLEPeripheral {
           return
         case BLEMessageType.RetrieveMeasurementCount:
           const count = data.value.length > 9 ? data.value[9] : 0
-          if (count > 1) {
-            this.oldDataRemaining = count
+          if (count > 0) {
             const measures = []
-            for (let i = 2; i <= count; i++) {
+            for (let i = count; i >= 2; i--) {
               measures.push(new BLEMessage(BLEMessageType.RetrieveMeasurementInfo, i))
             }
 
@@ -355,8 +354,9 @@ export class PLXPeripheral implements BLEPeripheral {
             }
 
             const measureMessages = await this.httpClient.post("/messages", reqBody)
-            this.requestMessages.push(...measureMessages.data.data.actions)
+            this.requestMessages.unshift(...measureMessages.data.data.actions)
             await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, true)
+            this.oldDataRemaining = count
             return
           }
 
@@ -364,10 +364,10 @@ export class PLXPeripheral implements BLEPeripheral {
           return
         case BLEMessageType.RetrieveMeasurementInfo:
           // skip first message
-          if (this.oldDataRemaining > 1) {
+          if (this.oldDataRemaining > 0) { // 10
             this.oldDataRemaining--
-            const isLast = this.oldDataRemaining === 1
-            await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, isLast)
+            const needRemove = this.oldDataRemaining > 0
+            await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, needRemove)
             return
           }
 
@@ -414,10 +414,12 @@ export class PLXPeripheral implements BLEPeripheral {
     await this.startScale(slot)
   }
 
-  private async requestNextAction(type: BLEMessageType, isLast = false) {
-    let action = this.requestMessages.find(a => a.id === type)
-    if (isLast) {
-      action = this.requestMessages.reverse().find(a => a.id === type)
+  private async requestNextAction(type: BLEMessageType, needRemove = false) {
+    let actionIdx = this.requestMessages.findIndex(a => a.id === type)
+    const action = this.requestMessages[actionIdx]
+
+    if (needRemove) {
+      this.requestMessages.splice(actionIdx, 1)
     }
 
     if (action) {
