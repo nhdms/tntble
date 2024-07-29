@@ -15,6 +15,8 @@ import {
 import {AxiosInstance} from "axios"
 import {TNTDeviceInfo, TNTUserInfo} from "./tnt"
 import {Logger} from "./logger";
+import {Platform} from "react-native";
+import * as BleManager2 from 'react-native-ble-manager';
 
 export class PLXPeripheral implements BLEPeripheral {
   private readonly manager: BleManager
@@ -297,6 +299,17 @@ export class PLXPeripheral implements BLEPeripheral {
     }
 
     this.requestMessages = pairMessages.data.data.actions
+
+    // check pair
+    if (Platform.OS === "android") {
+      const bondDevices = await BleManager2.default.getBondedPeripherals()
+      if (bondDevices) {
+        if (!bondDevices.find(p => p.id === device.id)) {
+          await BleManager2.default.createBond(device.id)
+        }
+      }
+    }
+
     await this.connect(device.id, async (data) => {
       if (!data.writeRequest) {
         this.logger.debug(`request not found ${JSON.stringify(data)}`)
