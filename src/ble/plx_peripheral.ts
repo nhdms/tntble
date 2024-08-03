@@ -33,6 +33,7 @@ export class PLXPeripheral implements BLEPeripheral {
   private receivedMessages = new Map<BLEMessageType, number[]>()
   private messageQueue: Record<string, number[]> = {}
   private state = ManagerState.Initialized;
+
   constructor(listener: BLEListener, l: Logger, httpClient: AxiosInstance) {
     this.manager = new BleManager()
     this.listener = listener
@@ -383,7 +384,11 @@ export class PLXPeripheral implements BLEPeripheral {
             return
           }
 
-          await this.requestNextAction(BLEMessageType.Disconnect)
+          try {
+            if (await this.device.isConnected()) {
+              await this.device.cancelConnection()
+            }
+          } catch (e) {}
           return
       }
     })
