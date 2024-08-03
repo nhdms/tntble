@@ -368,14 +368,19 @@ export class PLXPeripheral implements BLEPeripheral {
             return
           }
 
-          const metrics = await this.httpClient.post("/measures", {
-            "payload": toHexString(data.value),
-            "device_id": this.deviceInfo?.ID,
-            "profile_id": this.profileInfo?.ID,
-            "offline_scale": offlineScale,
-          })
+          try {
+            const metrics = await this.httpClient.post("/measures", {
+              "payload": toHexString(data.value),
+              "device_id": this.deviceInfo?.ID,
+              "profile_id": this.profileInfo?.ID,
+              "offline_scale": offlineScale,
+            })
+            this.listener.onScaleDone(metrics.data.data)
+          } catch (e) {
+            this.listener.onError('scale', e)
+            return
+          }
 
-          this.listener.onScaleDone(metrics.data.data)
           this.state = ManagerState.ScaleDone
           await this.requestNextAction(BLEMessageType.Disconnect)
           return
