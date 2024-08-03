@@ -273,7 +273,7 @@ export class PLXPeripheral implements BLEPeripheral {
     this.requestMessages = []
 
     const actions = [
-      // new BLEMessage(BLEMessageType.Disconnect),
+      new BLEMessage(BLEMessageType.Disconnect),
       new BLEMessage(BLEMessageType.WriteDate),
       new BLEMessage(BLEMessageType.VerifyUUID, this.profileInfo?.uuid),
       new BLEMessage(BLEMessageType.RetrieveDeviceInfo),
@@ -342,7 +342,9 @@ export class PLXPeripheral implements BLEPeripheral {
         case BLEMessageType.RetrieveMeasurementCount:
           const count = data.value.length > 9 ? data.value[9] : 0
           if (count > 1) {
-            const measures = []
+            const measures = [
+              new BLEMessage(BLEMessageType.Disconnect),
+            ]
             for (let i = count; i >= 2; i--) {
               measures.push(new BLEMessage(BLEMessageType.RetrieveMeasurementInfo, i))
             }
