@@ -226,7 +226,7 @@ export class PLXPeripheral implements BLEPeripheral {
         await this.device.writeCharacteristicWithoutResponseForService(request.service_id, request.characteristic_id, hexStringToBase64(p))
       }
     } catch (e) {
-      this.listener.onError('write', e)
+      this.listener.onError('write', {request, error: e})
     }
   }
 
@@ -367,7 +367,7 @@ export class PLXPeripheral implements BLEPeripheral {
             await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, true)
             return
           }
-
+          this.state = ManagerState.ScaleDone
           try {
             const metrics = await this.httpClient.post("/measures", {
               "payload": toHexString(data.value),
@@ -381,7 +381,6 @@ export class PLXPeripheral implements BLEPeripheral {
             return
           }
 
-          this.state = ManagerState.ScaleDone
           await this.requestNextAction(BLEMessageType.Disconnect)
           return
       }
