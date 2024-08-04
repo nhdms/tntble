@@ -82,6 +82,10 @@ export class PLXPeripheral implements BLEPeripheral {
             ch.monitor((err, callbackCh) => {
               if (err) {
                 this.logger.debug(`${ch.uuid} characteristics error ${err}`)
+                if (this.state >= ManagerState.ScaleDone) {
+                  // dont handle error when scale done
+                  return
+                }
                 if (err.errorCode === BleErrorCode.DeviceDisconnected) {
                   // deduplicate event disconnected
                   const key = JSON.stringify(err)
@@ -379,16 +383,11 @@ export class PLXPeripheral implements BLEPeripheral {
               "offline_scale": offlineScale,
             })
             this.listener.onScaleDone(metrics.data.data)
+            this.requestNextAction(BLEMessageType.Disconnect)
           } catch (e) {
             this.listener.onError('scale', e)
             return
           }
-
-          try {
-            if (await this.device.isConnected()) {
-              await this.device.cancelConnection()
-            }
-          } catch (e) {}
           return
       }
     })
