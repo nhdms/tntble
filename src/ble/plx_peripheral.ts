@@ -45,6 +45,7 @@ export class PLXPeripheral implements BLEPeripheral {
       this.manager.onStateChange(this.listener.onStateUpdate)
     })
     this.state = ManagerState.Initialized
+    this.offlineMeasures = []
   }
 
   getProfile() {
