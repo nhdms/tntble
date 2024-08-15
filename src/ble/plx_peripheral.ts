@@ -386,6 +386,7 @@ export class PLXPeripheral implements BLEPeripheral {
               "offline_data": this.offlineMeasures,
             })
             this.listener.onScaleDone(metrics.data.data)
+            this.offlineMeasures = []
             this.requestNextAction(BLEMessageType.Disconnect)
           } catch (e) {
             this.listener.onError('scale', e)
