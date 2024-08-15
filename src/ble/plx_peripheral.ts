@@ -33,6 +33,7 @@ export class PLXPeripheral implements BLEPeripheral {
   private receivedMessages = new Map<BLEMessageType, number[]>()
   private messageQueue: Record<string, number[]> = {}
   private state = ManagerState.Initialized;
+  private offlineMeasures: string[];
 
   constructor(listener: BLEListener, l: Logger, httpClient: AxiosInstance) {
     this.manager = new BleManager()
@@ -371,6 +372,7 @@ export class PLXPeripheral implements BLEPeripheral {
           // skip first message
           const messageRequestExists = this.requestMessages.find(a => a.id === BLEMessageType.RetrieveMeasurementInfo)
           if (messageRequestExists) {
+            this.offlineMeasures.push(toHexString(data.value))
             await this.requestNextAction(BLEMessageType.RetrieveMeasurementInfo, true)
             return
           }
@@ -381,6 +383,7 @@ export class PLXPeripheral implements BLEPeripheral {
               "device_id": this.deviceInfo?.ID,
               "profile_id": this.profileInfo?.ID,
               "offline_scale": offlineScale,
+              "offline_data": this.offlineMeasures,
             })
             this.listener.onScaleDone(metrics.data.data)
             this.requestNextAction(BLEMessageType.Disconnect)
